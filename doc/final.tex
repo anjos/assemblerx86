@@ -1,0 +1,376 @@
+%% Olá emacs, isto é -*-latex-*- */
+%% $Id: final.tex,v 1.4 1999/02/02 00:39:38 andre Exp $
+
+\documentclass[a4paper]{article}
+
+\usepackage[english, portuges]{babel}
+\usepackage[latin1]{inputenc}
+\usepackage{graphicx}
+%%\usepackage{html}
+
+\title{Relatório Final do Trabalho 1 de Software 1 - MONTADOR PARA LINGUAGEM \\
+MACRO-ASSEMBLY (x86) - v1.0}
+
+\author{André Rabello dos Anjos, Marcos Peixoto Carrão,\\
+ Marcus André da Cruz Loureiro e Moisés Araújo}
+
+\begin{document}
+
+\maketitle
+
+\section{Contatos}
+
+\begin{itemize}
+\item André - Andre.dos.Anjos@cern.ch;
+\item Marcos - mpc@minerva.del.ufrj.br;
+\item Marcus André - macl@minerva.del.ufrj.br;
+\item Moisés - moises\_rj@yahoo.com
+\end{itemize}
+
+\section{Objetivo}
+
+A codificação (em C) usando, opcionalmente, como ferramentas de apoio o GNU
+Bison e GNU Flex de um montador para linguagem Assembly compatível com
+processadores 8086. O uso de variáveis maiores que 16 bits (palavras-duplas ou
+quádrupas) é opcional (e não foi implementado aqui). O montador em questão deve
+gerar código executável do tipo array de bytes para DOS (arquivos com extensão
+\texttt{com}). 
+
+Como caso de teste o montador deve compilar o segundo trabalho da mesma
+disciplina: um sistema de menus que imita de forma simplificada um editor de
+texto operante em DOS.
+
+\section{Especificações do projeto}
+
+O montador discutido neste relatório tem as seguintes especificações técnicas:
+
+\begin{itemize}
+\item Aceita um número de instruções diferentes contidas em um dicionário de
+termos e códigos. A ampliação deste dicionário pode aumentar a capacidade do
+montador em codificar arquivos de entrada;
+\item Possui um número de registradores variável e totalmente configurável
+através de outro arquivo de configuração;
+\item Foi produzido em C usando como ferramentas de apoio o GNU Bison 1.25 e
+GNU Flex 2.5.4;
+\item Produz arquivos executáveis do tipo comando do DOS (``*.com"), embora
+possa ser facilmente adaptado para produzir outros tipos de arquivo do tipo
+``array de bytes". 
+\end{itemize}
+
+\section{Desenvolvimento do Código}
+
+O tempo de execução do projeto foi maior que esperado, finalizando-se em
+27 de Janeiro de 1999. No total, cerca de 4800 linhas de codigo estão inclusas
+na versão atual do programa (1.0).
+
+A utilização das ferramentas de apoio (Bison e Flex) tornaram-se parte
+fundamental no desenvolvimento do montador. Seu uso reduziu em cerca de 50\% o
+número de linhas de código a serem escritas. Esta comparação foi feita
+somando-se todas as linhas do código final (incluindo o código produzido pelo
+Bison e pelo Flex) com o código em estado inicial (sem incluir os códigos
+gerados). Tanto o Bison, quanto o Flex foram usados em 2 diferentes partes do
+montador: na inicialização e na montagem. Na inicialização, o parser de
+configuração, é responsável por ler os arquivos de configuração e iniciar o
+montador. O parser de montagem começa a trabalhar assim que a configuração
+termina. Este tipo de organização permite também que o montador seja utilizado
+como uma ferramente de interpretação onde o usuário pode digitar as linhas de
+códigos e observar qual será a saída do montador. 
+
+Para cada um dos dois parsers supra-citados, um analizador lexicográfico
+(usando Flex) foi gerado.
+
+Eis aqui um resumo de outras ferramentas utilizadas:
+
+\begin{itemize}
+\item GNU C Compiler, versão 2.7.2.3 para compilaçao, na plataforma de
+desenvolvimento (Linux);
+\item Concurrent Version System (CVS) 1.9, para adminstração e gerenciamento de
+múltiplos pontos de desenvolvimento;
+\item GNU Make 3.76.1 para a construcao dos alvos;
+\end{itemize}
+
+\section{O Montador}
+
+\subsection{Operação Interna}
+
+O montador é constituído de diversas partes, dentre elas podemos destacar 3: o
+analizador lexicográfico, o ``parser" e o codificador. O primeiro deve ser o
+mais simples possível pois a leitura e identificação de partes do arquivo
+de entrada pode se tornar uma atividade tanto quanto confusa quanto mais
+especializado deva ser o analizador. 
+
+A segunda parte, o ``parser", pode ser tão complexa quanto seja complexa a
+linguagem a ser analizada. Ela terá a funçao de juntar as partes propostas pelo
+analizador e formar grupos semânticos que exprimam a lógica da linguagem ou
+rejeitar tais partes detectando então, um erro. Já a terceira e última parte
+será aquela que traduzirá os grupos semânticos em instruções codificadas e as
+escreverá no arquivo de saída.
+
+No que se segue, teremos uma breve discussão do funcionamento conjunto destas 3
+partes.
+
+\paragraph{O ``parser"} Aproveitando a idéia de agrupamento de símbolos
+não-terminais proposta pelo Bison, resolvemos por agregar grupamentos
+semânticamente coerentes de tal forma a otimizar o trabalho de
+``parsing". Tendo acesso a grupamentos menores apartir de grupamentos maiores
+provou-se de fato muito eficaz. Então, por exemplo, se quiséssemos identificar
+um dos operandos de uma linha de instrução, só poderíamos fazê-lo através do
+objeto "linha" onde foi declarado. Teríamos disponível toda linha podendo não
+somente fazer a identificação, como uma comparação entre operandos ou, ainda,
+avaliar se aquele grupamento é válido e pode ser codificado ou deve gerar um
+erro ou ainda um simples aviso ao usuário.
+
+Para que tal paradigma se concretizasse, uma gama de definições e procedimentos
+foi criada. A interconexão entre os elementos lá definidos pode ser entendida
+melhor ao analizarmos a figura~\ref{fig:connect}.
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[type=eps, ext=.eps, scale=0.42, bb=0 0 808 507]{figs/relation}
+\end{center}
+\caption{A relação entre os grupamentos durante o ``parsing".}
+\label{fig:connect}
+\end{figure}
+
+Nesta figura observamos que grupamentos maiores (como a ``entrada" dependem de
+grupamentos menores). É claro que se ``explodirmos" os grupamentos menores (ou
+mesmo alguns dos grupamentos maiores) poderemos ver os sinais (``tokens")
+inferiores como o caracter de nova linha, números ou ainda palavras que nesta
+figura não foram representados. O parser funciona identificando os sinais
+básicos para formar novos sinais mais complexos. Uma vez atingida a máxima
+complexidade em termos de grupamento, a análise lógica é feita e o grupamento é
+adicionado ao código a ser montado em binário ou não caso um erro ocorra.
+
+\subparagraph{Erros} Não houve preocupação intensa com a deteção de erros neste
+nível. Desta forma, o mais simples foi implementado: o montador pára ao
+identificar um erro, reporta o erro em \texttt{stdout} e aborta. Devemos
+destacar que o parser gerado pelo Bison torna muito fácil a identificação de
+tais lapsos de programação.
+
+\paragraph{O Analizador Lexicográfico} Na identificação dos sinais, o
+analizador lexicográfico é utilizado. Os sinais podem ser divididos em 4
+classes:
+
+\begin{itemize}
+\item \textbf{palavra }- Nesta classe encontram-se símbolos formados por uma
+letra (ou ``underscore'') seguida de mais letras ou números. Uma vez
+identificado este tipo de sinal, estando ele em conformidade lexicográfica com
+as regras do montador, ele é testado. Este teste identifica símbolos declarados
+como nomes de registradores, procedimentos, instruções, variáveis e
+constantes. Um valor de retorno apropriado é escolhido demonstrando a deteção
+de um símbolo válido ou de um novo termo ao programa;
+
+\item \textbf{número }- São todos os tipos de números a serem reconhecidos pelo
+montador. Dois tipos são reconhecidos:
+
+\begin{enumerate}
+\item Hexadecimais, com notação do tipo $0xnnnn$, $0Xnnnn$, $nnnnH$ ou
+$nnnnh$. Os números em hexa podem ainda receber um sinal adicional;
+\item Decimais, com notação do tipo nnnn, onde o primeiro 'n' não pode ser
+zero. Os números decimais podem receber um sinal de mais ou menos antecedendo o
+valor do módulo, como no caso dos hexadecimais;
+\end{enumerate}
+
+\item \textbf{caracteres isolados }- Tais como '$]$' ou o caracter de nova
+linha são reconhecidos como pertencentes a esta;
+
+\item \textbf{comentário}- caso um ';' seja detetado, a linha é pulada daquele
+ponto em diante.
+
+\end{itemize}
+
+\paragraph{O codificador} O codificador somente é ativado quando o sinal de
+fim-de-arquivo é encontrado. A função desta parte do programa é substituir os
+sub-grupamentos formados por seus equivalentes códigos hexadecimais, resolver
+os enderecos de memória e, por final, escrever o arquivo de saída. Este arquivo
+deve ser um ``.com" válido. O número de instruções codificáveis depende do
+dicionário de termos válidos lidos durante a inicialização do sistema. Este
+dicionário pode ser totalmente reestruturado para suportar os mais diferentes
+tipos de instrução e para substituir o código fonte por qq seqüência
+hexadecimal. Isto significa que este compilador poderá, se corretamente
+configurado, gerar código para qualquer máquina desde que os valores em hexa
+sejam compatíveis. Sua única limitaçao mora no fato de que foi especializado
+para gerar arquivos executáveis do tipo ``array de bytes" para DOS. Esta
+limitação (ajuste de deslocamento de valores absolutos) também pode ser
+retirada redefinindo-se a diretiva \texttt{ORIGIN\_OF\_CODE} no arquivo
+\texttt{include$/$coding.h} na raíz da distribuição.
+
+\section{Limitações}
+Devemos citar aqui alguns pontos não implementados neste montador:
+
+\begin{enumerate}
+\item Não pode juntar arquivos fontes, podendo somente processar 1 arquivo por
+vez, gerando um arquivo executável apartir deste;
+
+\item O montador não se recupera do erro, exibindo, no final da sessão, uma
+lista de erros de montagem, mas aborta ao encontrar o primeiro erro no código
+que está lendo;
+
+\item Identificação de segmentos de código, pilha ou dados através de diretivas
+segment/ends. Isto implica somente um problema: a pilha ou melhor, o topo da
+pilha não pode ser declarado. Uma solução é declarar uma variável e ajustar
+"sp" como no exemplo abaixo:
+
+\begin{verbatim}
+stack_top dw 0h ;; aponta para uma posicao depois de stack_base
+stack_base dw 1024 dup(0h) ;; o rótulo stack_base não é usado...
+mov sp, offset stack_top # Voilà!
+\end{verbatim}
+
+\item O arquivo de entrada deve ser compatível com caracteres 7bit-ASCII. Em
+outras palavras, caracteres com código hexadecimal acima de 127H gerarão erro,
+mesmo quando comentados.
+\end{enumerate}
+
+\section{Conclusões Finais}
+O projeto ficou bem organizado como é possível perceber através do código fonte
+disponível ainda que o tempo de desenvolvimento, considerando ocupações
+adicionais, tenha sido reduzido em demasiado (cerca de 2 meses). O número de
+linhas de código foi de cerca de 4800, ainda sim. O código está bem comentado e
+assim sendo, um programador com nível médio de experiência poderá lê-lo e
+compreendê-lo relativamente rápido. O código produzido também deve ser
+consultado e considerado como parte da documentação. 
+
+Nesta versão do montador, as principais fases de montagem são executadas pelo
+programa como discutido anteriormente. As limitações expostas referem-se, em
+sua maioria, a facilidades de programação não implementadas. No nosso ponto de
+vista, não haveria grandes complicações em eliminá-las, se o tempo
+permitisse.
+
+A conclusão final é, sem dúvida, que atingimos um objetivo primário de
+entendermos como um programa assembly é montado em ambiente DOS. I.e., como
+símbolos são resolvidos e o programa final é codificado. Talvez, várias das
+nossas escolhas durante a codificação de nossas idéias não fossem repetidas se
+tivéssemos que re-fazer tudo novamente, mas temos confiança em termos tomado
+boas decisões no percurso do desenvolvimento e tudo isto está presente no
+código do montador. 
+
+Finalmente, montamos o caso de teste (sistema de menus) que compilou sem
+problemas. O arquivo gerado foi executado e produziu o mesmo efeito que se
+tivesse sido gerado por um montador comercial (como o Masm ou Tasm). O
+arquivo-fonte que gerou tal executável está na distribuição do montador, no
+diretório chamado \texttt{teste}.
+
+Como bônus, entendemos quão complicado pode ser o desenvolvimento de software
+em grupo e a utilizar ferramentes que suportem tal desenvolvimento.
+
+No apêndice~\ref{ap:manual}, poderemos encontrar um simples manual de uso e
+configuração para o montador.
+
+\appendix
+
+\section{Manual de uso do montador}
+\label{ap:manual}
+
+\subsection{Compilação}
+A compilação deve ser feita alterando-se o arquivo \texttt{Makefile} na raiz da
+distribuição para refletir as preferências pessoais de compilação como o nome
+do programa final e os flags de otimização e depuração. Com isto pronto faça
+\texttt{make all} para gerar o executável ou \texttt{make restart} para limpar
+o diretório. 
+
+	O desenvolvimento do projeto foi feito utilizando-se os compiladores e
+ferramentas GNU para Linux e depois foi portado e compilado para DOS. É
+possível que o arquivo fonte gerado pelo Flex produza alguns avisos e que a
+compilação para DOS contenha mais avisos que para Linux dependendo os
+parâmetros usados durante a compilação. Recomendamos que se faça uso dos
+compiladores e ferramentas GNU tanto para Linux quanto para DOS no momento de
+compilação. A compilação utilizando outras ferramentas não foi testada, embora
+os arquivos fontes sejam o máximo o possível \textsl{ANSI-C compliant}.
+
+	A documentação, nesta versão, deve ser gerada manualmente usando-se
+\LaTeX. Alguns pacotes foram usados: babel, graphicx e inputenc. Sem tais, o
+arquivo fonte não compilará.
+
+\subsection{Configuração}
+
+Dois arquivos de configuração estão disponíveis junto com a distribuição do
+código fonte. Estes podem controlar as instruções traduzíveis pelo compilador e
+o nome dos registradores reconhecíveis. A parte do código responsável pela
+inicialização do montador é responsável por carregar estes valores. A parte do
+montador que lê o arquivo de instruções é também um parser gerado pelo Bison,
+ainda que o arquivo contendo os nomes dos registradores válidos não seja. Isto
+quer dizer que mensagens de erro para com o arquivo de registradores não serão
+tão explicativas.
+
+\paragraph{Instruções} Cada linha neste arquivo (com exceção das que comecem
+por ou contenham '\#') contém a descrição de uma instrução válida para o
+parser, indicando a qualidade dos mesmos e o código binário que deve ser
+substituído pelo instrução na fase de codificação. Alguns exemplos seguem
+abaixo:
+
+\begin{verbatim}
+## Movimentacao de dados - Isto e' um comentario de uma linha
+MOV ax, end  : 0xB8 # ax <- (end)
+MOV bx, word : 0xBB # isto tambem e' um comentario valido!
+MOV cx, [bp+]: 0xC945
+
+## Movimentação de dados
+MOV ax, bx   : 0x89E8 # entre registradores
+\end{verbatim}
+
+O arquivo na íntegra, com mais instruções e comentários pode ser visto no
+diretório \texttt{config} da sua instalação.
+
+\paragraph{Registradores} Este arquivo é simples possuindo todos os
+registradores válidos, um por linha. Um exemplo seria:
+
+\begin{verbatim}
+ax
+bx
+es
+...
+\end{verbatim}
+
+Este arquivo quase não deve ser alterado e foi criado com propósitos de
+desenvolvimento. Mas ainda sim, pode ser usado para limitar o parser.
+
+\subsection{Uso}
+Uma vez compilado e configurado o montador está pronto para ser
+utilizado. Respeitando-se as limitações expostas anteriormente, podemos então
+entrar com um arquivo em assembly para que o montador possa
+codificá-lo. Várias opções de linha estão disponíveis para o executável do
+montador após sua compilação, para ajuda neste tópico faça:
+
+\begin{verbatim}
+# montador -h
+\end{verbatim}
+
+Isto deve gerar a seguinte informação (ou algo semelhante):
+
+\begin{verbatim}
+uso: ./x [opcoes]
+-a arquivo_de_entrada (default: stdin)
+-i arquivo_de_instrucoes (default: config/instruc.cfg)
+-r arquivo_de_registradores (default: config/regist.cfg)
+-o arquivo_de_saida (default: stdout)
+-g <ativa modo de depuracao>
+-h "esta ajuda"
+\end{verbatim}
+
+Faça uso das opções desejadas para a montagem do seu arquivo fonte em
+assembly. Nós incluimos alguns arquivos em assembly como exemplo que podem ser
+achados no diretório \texttt{teste} de sua distribuição. É importante que o
+usuário leia com atenção estes arquivos pois algumas discrepâncias em relação a
+compiladores comercias foram inseridas. Aqui podemos citar:
+
+\begin{enumerate}
+\item Variáveis tipo vetor que são inicializadas por valores múltiplos, e que
+não se contenham a uma única linha de inicialização devem usar o símbolo '$|$'
+antes do fim da linha;
+
+\item A palavra-chave \texttt{public} foi substituida pelo português
+\texttt{declare} e somente pode ser usada para declarar rotinas;
+
+\item Variáveis devem ser declaradas antes de serem usadas.
+\end{enumerate}
+
+Caso a saída do programa seja para \texttt{stdout} ou \texttt{stderr}, esta
+será feita de forma organizada, indicando modo de análise. As rotinas e
+variáveis serão re-impressas com os respectivos endereços de alocação e códigos
+a serem substituidos. Isto difere da opção de linha \texttt{-g} que
+simplesmente fará com que os parsers e analizadores lexicográficos imprimam
+várias linhas de checagem.
+\end{document}
+
+
